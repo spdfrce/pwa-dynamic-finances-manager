@@ -1,0 +1,965 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#16302D">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Edna's Tracker">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Dynamic Finances Manager</title>
+<style>
+  :root{
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Helvetica Neue", Arial, sans-serif;
+    --bg:#F3F2ED; --surface:#FFFFFF; --surface-2:#E8E6DD; --border:#D9D6C9;
+    --fg:#1C1E1A; --fg-muted:#6B6A5D;
+    --ink:#16302D; --accent:#2F6F6B; --accent-fg:#FFFFFF;
+    --good:#3F8F5F; --warn:#C98A2E; --danger:#B23B33;
+    --cat1:#B4593A; --cat2:#7C6CAE; --cat3:#3B7EA1; --cat4:#D08A3C; --cat5:#4F8F6B;
+    --cat6:#B2457B; --cat7:#5B5B66; --cat8:#8A6E3C; --cat9:#767567;
+    --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15181B; --surface:#1D2124; --surface-2:#262B2E; --border:#343A3D;
+      --fg:#EDEEE9; --fg-muted:#A7ACA3;
+      --ink:#BFE3DD; --accent:#5FA39D; --accent-fg:#0E1A19;
+      --good:#6FBE8C; --warn:#E0AA4E; --danger:#E0695F;
+      --cat1:#D98664; --cat2:#A79BD1; --cat3:#6FAFD1; --cat4:#E8B06B; --cat5:#7FBE9C;
+      --cat6:#D481A8; --cat7:#8C8C99; --cat8:#BFA06A; --cat9:#A6A496;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#15181B; --surface:#1D2124; --surface-2:#262B2E; --border:#343A3D;
+    --fg:#EDEEE9; --fg-muted:#A7ACA3;
+    --ink:#BFE3DD; --accent:#5FA39D; --accent-fg:#0E1A19;
+    --good:#6FBE8C; --warn:#E0AA4E; --danger:#E0695F;
+    --cat1:#D98664; --cat2:#A79BD1; --cat3:#6FAFD1; --cat4:#E8B06B; --cat5:#7FBE9C;
+    --cat6:#D481A8; --cat7:#8C8C99; --cat8:#BFA06A; --cat9:#A6A496;
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  html{ font-size:118%; }
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:var(--font);
+    font-size:1rem; line-height:1.5;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .num{ font-variant-numeric: tabular-nums; }
+  h1,h2,h3{ font-family:var(--font); font-weight:700; margin:0; text-wrap:balance; }
+  button{ font-family:inherit; }
+
+  .app{ display:flex; flex-direction:column; height:100%; max-width:480px; margin-inline:auto; width:100%; overflow-x:hidden; }
+
+  .topbar{ flex:0 0 auto; background:var(--ink); color:var(--surface); }
+  .topbar-inner{ padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
+  .brand{ font-family:var(--font); font-weight:700; font-size:1.2rem; letter-spacing:.01em; }
+  .brand-sub{ font-size:.82rem; opacity:.8; display:block; margin-top:2px; }
+
+  .main{ flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 16px 28px; }
+
+  .tabbar{ flex:0 0 auto; display:grid; grid-template-columns:repeat(4,1fr); background:var(--surface); border-top:1px solid var(--border); }
+  .tabbar button{
+    appearance:none; border:none; background:none; color:var(--fg-muted);
+    padding:15px 4px 20px; font-size:.8rem; display:flex; flex-direction:column; align-items:center; gap:5px;
+    cursor:pointer;
+  }
+  .tabbar button .dot{ width:7px; height:7px; border-radius:50%; background:transparent; }
+  .tabbar button.active{ color:var(--ink); }
+  .tabbar button.active .dot{ background:var(--accent); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .tabbar button.active{ color:var(--accent); } }
+  :root[data-theme="dark"] .tabbar button.active{ color:var(--accent); }
+  .tabbar button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--accent); outline-offset:2px;
+  }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+  .card-centered{ text-align:center; }
+  .card-centered .balance-grid{ text-align:left; }
+  .stack{ display:flex; flex-direction:column; gap:12px; }
+  .row{ display:flex; align-items:center; gap:10px; }
+  .row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .muted{ color:var(--fg-muted); font-size:.92rem; }
+  .section-title{ font-size:.86rem; text-transform:uppercase; letter-spacing:.05em; color:var(--fg-muted); margin:26px 0 10px; }
+  .section-title:first-child{ margin-top:0; }
+
+  .balance-figure{ font-family:var(--font); font-size:2.3rem; font-weight:700; letter-spacing:-.01em; }
+  .balance-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+  .balance-mini{ background:var(--surface-2); border-radius:10px; padding:10px 12px; }
+  .balance-mini .label{ font-size:.8rem; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em; }
+  .balance-mini .value{ font-family:var(--font); font-weight:700; font-size:1.2rem; margin-top:2px; }
+
+  .month-nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .month-nav button{ appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--fg); width:34px; height:34px; border-radius:50%; font-size:1rem; cursor:pointer; }
+  .month-label{ font-weight:600; }
+
+  .callout{ border-radius:var(--radius); padding:14px 16px; background:var(--surface-2); border:1px solid var(--border); }
+  .callout .big{ font-family:var(--font); font-weight:700; font-size:1.3rem; }
+
+  .pill-row{ display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--border); }
+  .pill-row:last-child{ border-bottom:none; }
+  .swatch{ width:10px; height:10px; border-radius:50%; flex:0 0 auto; }
+  .pill-main{ flex:1 1 auto; min-width:0; }
+  .pill-top{ display:flex; justify-content:space-between; gap:8px; font-size:1rem; }
+  .pill-top .name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar{ height:6px; border-radius:4px; background:var(--border); margin-top:6px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:4px; }
+  .status-good{ color:var(--good); } .status-warn{ color:var(--warn); } .status-danger{ color:var(--danger); }
+
+  .chip-scroll{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin:0 -2px; }
+  .chip{
+    appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--fg);
+    border-radius:999px; padding:9px 15px; font-size:.95rem; white-space:nowrap; cursor:pointer; flex:0 0 auto;
+    display:flex; align-items:center; gap:6px;
+  }
+  .chip .swatch{ width:8px; height:8px; }
+  .chip.selected{ background:var(--ink); color:var(--surface); border-color:var(--ink); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .chip.selected{ background:var(--accent); color:var(--accent-fg); border-color:var(--accent); } }
+  :root[data-theme="dark"] .chip.selected{ background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+
+  label.field{ display:flex; flex-direction:column; gap:7px; font-size:.92rem; color:var(--fg-muted); }
+  input, select, textarea{
+    font-size:1rem; padding:11px 12px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface); color:var(--fg); width:100%;
+  }
+  textarea{ resize:vertical; min-height:70px; font-family:inherit; }
+  input::placeholder{ color:var(--fg-muted); opacity:.8; }
+
+  .segmented{ display:flex; background:var(--surface-2); border-radius:12px; padding:4px; gap:4px; }
+  .segmented button{
+    flex:1 1 0; appearance:none; border:none; background:none; color:var(--fg-muted);
+    padding:10px; border-radius:9px; font-weight:600; font-size:1rem; cursor:pointer;
+  }
+  .segmented button.active{ background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .segmented button.active{ color:var(--accent); } }
+  :root[data-theme="dark"] .segmented button.active{ color:var(--accent); }
+
+  .btn{
+    appearance:none; border:none; border-radius:12px; padding:14px; font-weight:600; font-size:1rem;
+    cursor:pointer; width:100%; text-align:center;
+  }
+  .btn-primary{ background:var(--ink); color:var(--surface); }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .btn-primary{ background:var(--accent); color:var(--accent-fg); } }
+  :root[data-theme="dark"] .btn-primary{ background:var(--accent); color:var(--accent-fg); }
+  .btn-ghost{ background:var(--surface-2); color:var(--fg); }
+  .btn-danger{ background:transparent; color:var(--danger); border:1px solid var(--danger); }
+  .btn-sm{ padding:10px 14px; font-size:.92rem; width:auto; }
+
+  .preview-box{ border:1px dashed var(--border); border-radius:12px; padding:12px; background:var(--surface-2); }
+  .preview-amount{ font-family:var(--font); font-weight:700; font-size:1.5rem; }
+
+  .entry-row{ padding:12px 0; border-bottom:1px solid var(--border); }
+  .entry-row:last-child{ border-bottom:none; }
+  .entry-head{ display:flex; align-items:center; gap:10px; }
+  .entry-note{ flex:1 1 auto; min-width:0; }
+  .entry-note .n{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.92rem; }
+  .entry-amount{ font-family:var(--font); font-weight:700; font-size:1rem; flex:0 0 auto; }
+  .amount-expense{ color:var(--danger); } .amount-income{ color:var(--good); }
+  .entry-meta{ font-size:.84rem; color:var(--fg-muted); margin-top:2px; }
+  .entry-actions{ display:flex; gap:8px; margin-top:10px; }
+
+  .toast{
+    position:fixed; left:50%; bottom:92px; transform:translateX(-50%);
+    background:var(--ink); color:var(--surface); padding:10px 16px; border-radius:999px;
+    font-size:.92rem; opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:50; max-width:85%; text-align:center;
+  }
+  .toast.show{ opacity:1; }
+
+  .empty{ text-align:center; padding:36px 12px; color:var(--fg-muted); }
+  .empty h3{ color:var(--fg); margin-bottom:6px; }
+
+  .date-group-label{ font-size:.84rem; text-transform:uppercase; letter-spacing:.05em; color:var(--fg-muted); margin:18px 0 6px; }
+  .date-group-label:first-child{ margin-top:0; }
+
+  .switch{ position:relative; width:44px; height:26px; flex:0 0 auto; }
+  .switch input{ opacity:0; width:0; height:0; position:absolute; }
+  .switch .track{ position:absolute; inset:0; background:var(--border); border-radius:999px; transition:background .15s; }
+  .switch .knob{ position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:var(--surface); transition:left .15s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+  .switch input:checked + .track{ background:var(--accent); }
+  .switch input:checked + .track + .knob{ left:21px; }
+
+  .budget-input-row{ display:grid; grid-template-columns:1fr 100px; gap:10px; align-items:center; padding:9px 0; }
+</style>
+
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <span class="brand">Edna's Tracker</span>
+        <span class="brand-sub" id="headerSub"></span>
+      </div>
+    </div>
+  </header>
+  <main class="main" id="main"></main>
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="add"><span class="dot"></span>Add</button>
+    <button data-tab="dashboard"><span class="dot"></span>Overview</button>
+    <button data-tab="history"><span class="dot"></span>History</button>
+    <button data-tab="settings"><span class="dot"></span>Settings</button>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- static data ----------
+  var CURRENCIES = [
+    {code:"GHS", symbol:"₵", label:"Ghanaian Cedi (₵)"},
+    {code:"NGN", symbol:"₦", label:"Nigerian Naira (₦)"},
+    {code:"USD", symbol:"$", label:"US Dollar ($)"},
+    {code:"GBP", symbol:"£", label:"British Pound (£)"},
+    {code:"EUR", symbol:"€", label:"Euro (€)"}
+  ];
+
+  var KEYWORD_CATEGORIES = [
+    { id:"food", name:"Food", color:"var(--cat1)",
+      keywords:["food","lunch","dinner","breakfast","eat","restaurant","chop","jollof","waakye","rice","kenkey","banku","suya","kfc","chicken","pizza","snack"] },
+    { id:"delivery", name:"Delivery Fees", color:"var(--cat2)",
+      keywords:["delivery","bolt food","uber eats","glovo","jumia food","dispatch rider","rider fee"] },
+    { id:"transport", name:"Transport & Fuel", color:"var(--cat3)",
+      keywords:["fuel","petrol","diesel","gas station","transport","trotro","tro tro","uber","bolt","taxi","fare","parking"] },
+    { id:"kids", name:"Kids", color:"var(--cat4)",
+      keywords:["school","fees","kids","children","daycare","creche","diaper","formula","toys","pediatrician","kid"],
+      subcats:[
+        { id:"kids-general", name:"Daily", keywords:[] },
+        { id:"kids-investment", name:"Investments", keywords:["investment","ssnit","trust fund","education fund","save for"] },
+        { id:"kids-insurance", name:"Insurance", keywords:["insurance","policy","premium"] }
+      ] },
+    { id:"household", name:"Household", color:"var(--cat5)",
+      keywords:["groceries","supermarket","market","detergent","electricity","ecg","water bill","rent","utilities","gas cylinder"] },
+    { id:"gifts", name:"Gifts Given", color:"var(--cat6)",
+      keywords:["gift","present","birthday gift","wedding gift"] },
+    { id:"funerals", name:"Funerals", color:"var(--cat7)",
+      keywords:["funeral","burial","condolence"] },
+    { id:"church", name:"Church & Giving", color:"var(--cat8)",
+      keywords:["church","offering","tithe","contribution","harvest"] },
+    { id:"other", name:"Other", color:"var(--cat9)", keywords:[] }
+  ];
+
+  var INCOME_SOURCES = [
+    { id:"salary", name:"Fixed Salary" },
+    { id:"additional", name:"Additional Income" },
+    { id:"gift-received", name:"Gift / Money Received" }
+  ];
+
+  var CAT_PALETTE = ["var(--cat1)","var(--cat2)","var(--cat3)","var(--cat4)","var(--cat5)","var(--cat6)","var(--cat7)","var(--cat8)","var(--cat9)"];
+
+  var STORAGE_KEY = "ednaTrackerV1";
+
+  // ---------- state ----------
+  function defaultState(){
+    return {
+      settings: { currency:"GHS", salary:0, ttsEnabled:true, lowBalanceAlert:1500 },
+      categories: KEYWORD_CATEGORIES.map(function(c){ return { id:c.id, name:c.name, color:c.color, budget:0, custom:false }; }),
+      entries: [],
+      learned: {}
+    };
+  }
+
+  var state = loadState();
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return defaultState();
+      var parsed = JSON.parse(raw);
+      var base = defaultState();
+      return {
+        settings: Object.assign(base.settings, parsed.settings || {}),
+        categories: Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : base.categories,
+        entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+        learned: parsed.learned || {}
+      };
+    }catch(e){
+      return defaultState();
+    }
+  }
+
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  function currencySymbol(){
+    var c = CURRENCIES.find(function(x){ return x.code === state.settings.currency; });
+    return c ? c.symbol : state.settings.currency;
+  }
+
+  function fmt(n){
+    var v = (Math.round((n||0) * 100) / 100);
+    return currencySymbol() + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  function catById(id){
+    return state.categories.find(function(c){ return c.id === id; }) || state.categories[state.categories.length-1];
+  }
+  function keywordCatById(id){
+    return KEYWORD_CATEGORIES.find(function(c){ return c.id === id; });
+  }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function todayISO(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+  // ---------- parser ----------
+  function parseAmount(text){
+    var m = text.match(/(\d+(?:[.,]\d+)?)/);
+    if(!m) return null;
+    return parseFloat(m[1].replace(",", ""));
+  }
+
+  function parseCategory(text){
+    var lower = text.toLowerCase();
+    var bestLearned = null;
+    Object.keys(state.learned).forEach(function(kw){
+      if(lower.indexOf(kw.toLowerCase()) !== -1 && (!bestLearned || kw.length > bestLearned.kw.length)){
+        bestLearned = { kw: kw, catId: state.learned[kw] };
+      }
+    });
+    if(bestLearned && catById(bestLearned.catId)){
+      return { categoryId: bestLearned.catId, subcatId:null, matchedKeyword: bestLearned.kw, source:"learned" };
+    }
+    var best = null;
+    KEYWORD_CATEGORIES.forEach(function(cat){
+      cat.keywords.forEach(function(kw){
+        if(lower.indexOf(kw) !== -1 && (!best || kw.length > best.kw.length)){
+          best = { cat: cat, kw: kw };
+        }
+      });
+    });
+    if(!best) return { categoryId:"other", subcatId:null, matchedKeyword:null, source:"fallback" };
+    var subcatId = null;
+    if(best.cat.subcats){
+      for(var i=0;i<best.cat.subcats.length;i++){
+        var sub = best.cat.subcats[i];
+        if(sub.keywords.some(function(skw){ return lower.indexOf(skw) !== -1; })){ subcatId = sub.id; break; }
+      }
+    }
+    return { categoryId: best.cat.id, subcatId: subcatId, matchedKeyword: best.kw, source:"built-in" };
+  }
+
+  // ---------- TTS ----------
+  function speak(text){
+    if(!state.settings.ttsEnabled) return;
+    try{
+      if(!("speechSynthesis" in window)) return;
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.0;
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  // ---------- toast ----------
+  var toastTimer = null;
+  function toast(msg){
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 2200);
+  }
+
+  // ---------- month helpers ----------
+  var viewMonth = (function(){ var d = new Date(); return { y:d.getFullYear(), m:d.getMonth() }; })();
+  var MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  function entryInMonth(e, y, m){
+    var d = new Date(e.date + "T00:00:00");
+    return d.getFullYear() === y && d.getMonth() === m;
+  }
+
+  function monthEntries(y, m){
+    return state.entries.filter(function(e){ return entryInMonth(e, y, m); });
+  }
+
+  function monthTotals(y, m){
+    var es = monthEntries(y, m);
+    var income = 0, expense = 0;
+    var byCat = {};
+    es.forEach(function(e){
+      if(e.type === "income"){ income += e.amount; }
+      else {
+        expense += e.amount;
+        byCat[e.categoryId] = (byCat[e.categoryId] || 0) + e.amount;
+      }
+    });
+    return { income:income, expense:expense, byCat:byCat };
+  }
+
+  // Running balance through the end of the given month — every income entry adds,
+  // every expense subtracts, from the very first entry ever logged. This is what
+  // makes October pick up where September's leftover balance ended.
+  function lastDayISO(y, m){
+    var lastDate = new Date(y, m+1, 0).getDate();
+    return y + "-" + String(m+1).padStart(2,"0") + "-" + String(lastDate).padStart(2,"0");
+  }
+  function runningBalance(y, m){
+    var cutoff = lastDayISO(y, m);
+    var total = 0;
+    state.entries.forEach(function(e){
+      if(e.date <= cutoff){ total += (e.type === "income" ? e.amount : -e.amount); }
+    });
+    return total;
+  }
+
+  // Returns a short warning phrase when the running balance for the month an entry
+  // falls in is at/below the alert threshold, or null when there's nothing to flag.
+  function lowBalanceWarningText(dateISO){
+    var alertLevel = state.settings.lowBalanceAlert || 0;
+    if(alertLevel <= 0) return null;
+    var d = new Date(dateISO + "T00:00:00");
+    var bal = runningBalance(d.getFullYear(), d.getMonth());
+    if(bal <= alertLevel){ return "Balance is now " + fmt(bal) + "."; }
+    return null;
+  }
+
+  // ---------- app chrome ----------
+  var activeTab = "add";
+  var main = document.getElementById("main");
+  var headerSub = document.getElementById("headerSub");
+
+  function setHeaderSub(text){ headerSub.textContent = text; }
+
+  document.getElementById("tabbar").addEventListener("click", function(ev){
+    var btn = ev.target.closest("button[data-tab]");
+    if(!btn) return;
+    activeTab = btn.getAttribute("data-tab");
+    render();
+  });
+
+  function updateTabbar(){
+    document.querySelectorAll("#tabbar button").forEach(function(b){
+      b.classList.toggle("active", b.getAttribute("data-tab") === activeTab);
+    });
+  }
+
+  function render(){
+    updateTabbar();
+    if(activeTab === "add") renderAdd();
+    else if(activeTab === "dashboard") renderDashboard();
+    else if(activeTab === "history") renderHistory();
+    else if(activeTab === "settings") renderSettings();
+  }
+
+  // ================= ADD TAB =================
+  var addDraft = { entryType:"expense", text:"", amount:null, categoryId:null, subcatId:null, date: todayISO(), incomeSource:"salary", incomeAmount:"" };
+
+  // Computes amount/category/subcategory fresh from the current draft every time it's
+  // called, instead of being baked into a render pass — this is what lets the preview
+  // update without ever touching (and so never re-creating) the text box or amount input.
+  function computeEffective(){
+    var parsed = addDraft.text ? parseCategory(addDraft.text) : null;
+    var parsedAmount = addDraft.text ? parseAmount(addDraft.text) : null;
+    var categoryId = addDraft.categoryId || (parsed ? parsed.categoryId : null);
+    var subcatId = (addDraft.subcatId !== undefined && addDraft.subcatId !== null) ? addDraft.subcatId : (parsed ? parsed.subcatId : null);
+    var amount = addDraft.amount !== null ? addDraft.amount : parsedAmount;
+    return { parsed:parsed, categoryId:categoryId, subcatId:subcatId, amount:amount };
+  }
+
+  function renderAdd(){
+    setHeaderSub("Log an expense or income");
+    var html = '<div class="segmented" id="typeToggle">' +
+      '<button data-t="expense" class="'+(addDraft.entryType==="expense"?"active":"")+'">Expense</button>' +
+      '<button data-t="income" class="'+(addDraft.entryType==="income"?"active":"")+'">Income</button>' +
+      '</div>';
+
+    if(addDraft.entryType === "expense"){
+      html += '<div class="stack" style="margin-top:18px;">';
+      html += '<label class="field">What did you spend on?' +
+        '<textarea id="entryText" placeholder="e.g. 50 cedis on fuel today">'+escapeHtml(addDraft.text)+'</textarea>' +
+        '</label>';
+      html += '<div class="muted">Tip: tap the microphone on your keyboard to speak this instead of typing.</div>';
+      html += '<div id="previewArea"></div>';
+      html += '<label class="field">Date<input id="entryDate" type="date" value="'+addDraft.date+'"></label>';
+      html += '<button class="btn btn-primary" id="saveExpense">Save expense</button>';
+      html += '</div>';
+    } else {
+      html += '<div class="stack" style="margin-top:18px;">';
+      html += '<div><div class="muted" style="margin-bottom:9px;">Source</div><div class="chip-scroll">';
+      INCOME_SOURCES.forEach(function(s){
+        html += '<button class="chip'+(addDraft.incomeSource===s.id?" selected":"")+'" data-src="'+s.id+'">'+s.name+'</button>';
+      });
+      html += '</div></div>';
+      html += '<label class="field">Amount<input id="incomeAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" value="'+escapeAttr(addDraft.incomeAmount)+'"></label>';
+      html += '<label class="field">Note (optional)<input id="incomeNote" type="text" placeholder="e.g. October salary" value="'+escapeAttr(addDraft.incomeNote||"")+'"></label>';
+      html += '<label class="field">Date<input id="incomeDate" type="date" value="'+addDraft.date+'"></label>';
+      html += '<button class="btn btn-primary" id="saveIncome">Save income</button>';
+      html += '</div>';
+    }
+
+    main.innerHTML = html;
+
+    document.getElementById("typeToggle").addEventListener("click", function(ev){
+      var b = ev.target.closest("button[data-t]"); if(!b) return;
+      addDraft.entryType = b.getAttribute("data-t");
+      render();
+    });
+
+    if(addDraft.entryType === "expense"){
+      var ta = document.getElementById("entryText");
+      // Only ever touch the preview area below — never this textarea's own markup —
+      // so the keyboard (and any numeric/caps lock toggle on it) never resets mid-sentence.
+      ta.addEventListener("input", function(){
+        addDraft.text = ta.value;
+        addDraft.categoryId = null; addDraft.subcatId = null; addDraft.amount = null;
+        updatePreview();
+      });
+      document.getElementById("entryDate").addEventListener("change", function(ev){ addDraft.date = ev.target.value; });
+
+      document.getElementById("saveExpense").addEventListener("click", function(){
+        var eff = computeEffective();
+        var amt = eff.amount;
+        var cid = eff.categoryId || "other";
+        if(!amt || amt <= 0){ toast("Enter an amount first"); return; }
+        var entry = { id:uid(), type:"expense", amount:amt, categoryId:cid, subcatId: eff.subcatId, note: addDraft.text.trim(), date: addDraft.date, createdAt: Date.now() };
+        state.entries.push(entry);
+        // learn: if the guessed category was overridden and the text has a distinctive word, remember it
+        if(addDraft.categoryId && eff.parsed && eff.parsed.categoryId !== addDraft.categoryId){
+          var words = addDraft.text.toLowerCase().replace(/[^a-z0-9\s]/g,"").split(/\s+/).filter(function(w){ return w.length > 3; });
+          if(words.length){ state.learned[words[words.length-1]] = addDraft.categoryId; }
+        }
+        saveState();
+        var catName = catById(cid).name;
+        var warn = lowBalanceWarningText(addDraft.date);
+        speak("Logged " + amt + " " + state.settings.currency + " for " + catName + "." + (warn ? " " + warn : ""));
+        toast("Saved — " + fmt(amt) + " under " + catName + (warn ? " · " + warn : ""));
+        addDraft = { entryType:"expense", text:"", amount:null, categoryId:null, subcatId:null, date: todayISO(), incomeSource:"salary", incomeAmount:"" };
+        render();
+      });
+
+      updatePreview();
+    } else {
+      document.querySelectorAll("[data-src]").forEach(function(b){
+        b.addEventListener("click", function(){
+          addDraft.incomeSource = b.getAttribute("data-src");
+          if(addDraft.incomeSource === "salary" && !addDraft.incomeAmount && state.settings.salary > 0){
+            addDraft.incomeAmount = String(state.settings.salary);
+          }
+          render();
+        });
+      });
+      document.getElementById("incomeAmount").addEventListener("input", function(ev){ addDraft.incomeAmount = ev.target.value; });
+      document.getElementById("incomeNote").addEventListener("input", function(ev){ addDraft.incomeNote = ev.target.value; });
+      document.getElementById("incomeDate").addEventListener("change", function(ev){ addDraft.date = ev.target.value; });
+      document.getElementById("saveIncome").addEventListener("click", function(){
+        var amt = parseFloat(addDraft.incomeAmount);
+        if(!amt || amt <= 0){ toast("Enter an amount first"); return; }
+        var srcName = INCOME_SOURCES.find(function(s){return s.id===addDraft.incomeSource;}).name;
+        var entry = { id:uid(), type:"income", amount:amt, source: addDraft.incomeSource, note: addDraft.incomeNote || srcName, date: addDraft.date, createdAt: Date.now() };
+        state.entries.push(entry);
+        saveState();
+        var warn = lowBalanceWarningText(addDraft.date);
+        speak("Logged " + amt + " " + state.settings.currency + " as " + srcName + "." + (warn ? " " + warn : ""));
+        toast("Saved — " + fmt(amt) + " as " + srcName + (warn ? " · " + warn : ""));
+        addDraft.incomeAmount = ""; addDraft.incomeNote = "";
+        render();
+      });
+    }
+  }
+
+  // Rebuilds only #previewArea (amount + category guess). Never touches #entryText,
+  // so this is safe to call on every keystroke without disturbing focus, caret
+  // position, or the keyboard's own numeric/shift state.
+  function updatePreview(){
+    var area = document.getElementById("previewArea");
+    if(!area) return;
+
+    if(!addDraft.text.trim()){
+      area.innerHTML = '';
+      return;
+    }
+
+    var eff = computeEffective();
+    var cat = eff.categoryId ? catById(eff.categoryId) : null;
+    var kwCat = eff.categoryId ? keywordCatById(eff.categoryId) : null;
+
+    var html = '<div class="preview-box stack">';
+    html += '<div class="row-between"><span class="muted">Amount</span><span class="preview-amount num" id="amountPreviewText">'+ (eff.amount!==null ? fmt(eff.amount) : "—") +'</span></div>';
+    html += '<div id="manualAmountWrap">';
+    if(eff.amount === null){
+      html += '<label class="field">Or enter the amount manually<input id="manualAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></label>';
+    }
+    html += '</div>';
+
+    html += '<div>';
+    html += '<div class="muted" style="margin-bottom:9px;">Category'+ (kwCat && kwCat.id!=="other" && !addDraft.categoryId ? ' — guessed from "'+escapeHtml(eff.parsed.matchedKeyword)+'"' : '') +'</div>';
+    html += '<div class="chip-scroll" id="catChips">';
+    state.categories.forEach(function(c){
+      var sel = eff.categoryId === c.id;
+      html += '<button class="chip'+(sel?" selected":"")+'" data-cat="'+c.id+'"><span class="swatch" style="background:'+c.color+'"></span>'+escapeHtml(c.name)+'</button>';
+    });
+    html += '</div></div>';
+
+    if(cat && KEYWORD_CATEGORIES.find(function(k){return k.id===cat.id && k.subcats;})){
+      var subs = KEYWORD_CATEGORIES.find(function(k){return k.id===cat.id;}).subcats;
+      html += '<div><div class="muted" style="margin-bottom:9px;">Which kind?</div><div class="chip-scroll" id="subChips">';
+      subs.forEach(function(s){
+        var sel = eff.subcatId === s.id;
+        html += '<button class="chip'+(sel?" selected":"")+'" data-sub="'+s.id+'">'+escapeHtml(s.name)+'</button>';
+      });
+      html += '</div></div>';
+    }
+    html += '</div>'; // preview-box
+
+    area.innerHTML = html;
+
+    var manualAmt = document.getElementById("manualAmount");
+    if(manualAmt){
+      // Updates the amount display directly via textContent instead of calling
+      // updatePreview() again, so this field (like the main textarea) is never
+      // rebuilt while she's actively typing a digit into it.
+      manualAmt.addEventListener("input", function(){
+        addDraft.amount = manualAmt.value ? parseFloat(manualAmt.value) : null;
+        var amountText = document.getElementById("amountPreviewText");
+        if(amountText) amountText.textContent = addDraft.amount !== null ? fmt(addDraft.amount) : "—";
+      });
+    }
+    document.getElementById("catChips").addEventListener("click", function(ev){
+      var b = ev.target.closest("button[data-cat]"); if(!b) return;
+      addDraft.categoryId = b.getAttribute("data-cat");
+      addDraft.subcatId = null;
+      updatePreview();
+    });
+    var subChips = document.getElementById("subChips");
+    if(subChips){
+      subChips.addEventListener("click", function(ev){
+        var b = ev.target.closest("button[data-sub]"); if(!b) return;
+        addDraft.subcatId = b.getAttribute("data-sub");
+        updatePreview();
+      });
+    }
+  }
+
+  // ================= DASHBOARD TAB =================
+  function renderDashboard(){
+    setHeaderSub(MONTH_NAMES[viewMonth.m] + " " + viewMonth.y);
+    var totals = monthTotals(viewMonth.y, viewMonth.m);
+    var balance = runningBalance(viewMonth.y, viewMonth.m);
+    var monthEntryCount = monthEntries(viewMonth.y, viewMonth.m).length;
+
+    var html = '';
+    html += '<div class="month-nav"><button id="prevM">‹</button><span class="month-label">'+MONTH_NAMES[viewMonth.m]+' '+viewMonth.y+'</span><button id="nextM">›</button></div>';
+
+    html += '<div class="card card-centered">';
+    html += '<div class="muted">Balance through end of '+MONTH_NAMES[viewMonth.m]+'</div>';
+    html += '<div class="balance-figure num" style="color:'+(balance<0?"var(--danger)":"var(--fg)")+'">'+fmt(balance)+'</div>';
+    html += '<div class="balance-grid">' +
+      '<div class="balance-mini"><div class="label">In this month</div><div class="value num">'+fmt(totals.income)+'</div></div>' +
+      '<div class="balance-mini"><div class="label">Out this month</div><div class="value num">'+fmt(totals.expense)+'</div></div>' +
+      '</div>';
+    html += '</div>';
+
+    var alertLevel = state.settings.lowBalanceAlert || 0;
+    if(alertLevel > 0 && balance <= alertLevel){
+      html += '<div class="callout card-centered" style="margin-top:14px; border-color:var(--danger);"><span class="status-danger" style="font-weight:700;">Balance is at or below '+fmt(alertLevel)+'</span></div>';
+    }
+
+    if(monthEntryCount === 0){
+      html += '<div class="empty card" style="margin-top:22px;"><h3>Nothing logged for '+MONTH_NAMES[viewMonth.m]+' yet</h3><p class="muted">Go to Add to log your first expense or income.</p></div>';
+      main.innerHTML = html;
+      document.getElementById("prevM").addEventListener("click", function(){ shiftMonth(-1); });
+      document.getElementById("nextM").addEventListener("click", function(){ shiftMonth(1); });
+      return;
+    }
+
+    var deliveryTotal = totals.byCat["delivery"] || 0;
+    if(totals.expense > 0 || deliveryTotal > 0){
+      var pct = totals.expense > 0 ? Math.round((deliveryTotal/totals.expense)*100) : 0;
+      html += '<div class="section-title">Delivery fees</div>';
+      html += '<div class="callout card-centered"><div class="muted">This month</div><div class="big num">'+fmt(deliveryTotal)+'</div><div class="muted">'+pct+'% of spending</div></div>';
+    }
+
+    var budgeted = state.categories.filter(function(c){ return c.budget > 0; });
+    html += '<div class="section-title">Budgets</div>';
+    if(!budgeted.length){
+      html += '<div class="empty card"><h3>No budgets set yet</h3><p class="muted">Add monthly limits in Settings for categories like Gifts to keep an eye on them here.</p></div>';
+    } else {
+      html += '<div class="card">';
+      budgeted.forEach(function(c){
+        var spent = totals.byCat[c.id] || 0;
+        var pct = Math.min(100, Math.round((spent / c.budget) * 100));
+        var status = spent > c.budget ? "danger" : (pct >= 80 ? "warn" : "good");
+        html += '<div class="pill-row"><span class="swatch" style="background:'+c.color+'"></span><div class="pill-main">' +
+          '<div class="pill-top"><span class="name">'+escapeHtml(c.name)+'</span><span class="status-'+status+' num">'+fmt(spent)+' / '+fmt(c.budget)+'</span></div>' +
+          '<div class="bar"><div class="bar-fill" style="width:'+pct+'%; background:var(--'+status+')"></div></div>' +
+          '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    var catTotals = Object.keys(totals.byCat).map(function(id){ return { cat: catById(id), amount: totals.byCat[id] }; }).sort(function(a,b){ return b.amount - a.amount; });
+    html += '<div class="section-title">Top categories</div>';
+    if(!catTotals.length){
+      html += '<div class="empty card"><h3>Nothing logged yet</h3><p class="muted">Use the Add tab to log your first expense or income for '+MONTH_NAMES[viewMonth.m]+'.</p></div>';
+    } else {
+      html += '<div class="card">';
+      var maxAmt = catTotals[0].amount;
+      catTotals.slice(0,6).forEach(function(ct){
+        var pct = Math.round((ct.amount / maxAmt) * 100);
+        html += '<div class="pill-row"><span class="swatch" style="background:'+ct.cat.color+'"></span><div class="pill-main">' +
+          '<div class="pill-top"><span class="name">'+escapeHtml(ct.cat.name)+'</span><span class="num">'+fmt(ct.amount)+'</span></div>' +
+          '<div class="bar"><div class="bar-fill" style="width:'+pct+'%; background:'+ct.cat.color+'"></div></div>' +
+          '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    main.innerHTML = html;
+    document.getElementById("prevM").addEventListener("click", function(){ shiftMonth(-1); });
+    document.getElementById("nextM").addEventListener("click", function(){ shiftMonth(1); });
+  }
+
+  function shiftMonth(delta){
+    var m = viewMonth.m + delta, y = viewMonth.y;
+    if(m < 0){ m = 11; y -= 1; } else if(m > 11){ m = 0; y += 1; }
+    viewMonth = { y:y, m:m };
+    render();
+  }
+
+  // ================= HISTORY TAB =================
+  var historyFilter = "all";
+  var confirmDeleteId = null;
+
+  function renderHistory(){
+    setHeaderSub("All logged entries");
+    var es = monthEntries(viewMonth.y, viewMonth.m).slice().sort(function(a,b){ return (b.date+b.createdAt) < (a.date+a.createdAt) ? -1 : 1; });
+    if(historyFilter !== "all"){
+      es = es.filter(function(e){ return e.type==="expense" ? e.categoryId===historyFilter : historyFilter==="income"; });
+    }
+
+    var html = '<div class="month-nav"><button id="prevM2">‹</button><span class="month-label">'+MONTH_NAMES[viewMonth.m]+' '+viewMonth.y+'</span><button id="nextM2">›</button></div>';
+
+    html += '<div class="chip-scroll" id="filterChips" style="margin-bottom:14px;">';
+    html += '<button class="chip'+(historyFilter==="all"?" selected":"")+'" data-f="all">All</button>';
+    html += '<button class="chip'+(historyFilter==="income"?" selected":"")+'" data-f="income">Income</button>';
+    state.categories.forEach(function(c){
+      html += '<button class="chip'+(historyFilter===c.id?" selected":"")+'" data-f="'+c.id+'"><span class="swatch" style="background:'+c.color+'"></span>'+escapeHtml(c.name)+'</button>';
+    });
+    html += '</div>';
+
+    if(!es.length){
+      html += '<div class="empty card"><h3>No entries here</h3><p class="muted">Nothing matches this filter for '+MONTH_NAMES[viewMonth.m]+'.</p></div>';
+    } else {
+      html += '<div class="card">';
+      es.forEach(function(e){
+        var isIncome = e.type === "income";
+        var cat = isIncome ? null : catById(e.categoryId);
+        var label = isIncome ? (INCOME_SOURCES.find(function(s){return s.id===e.source;})||{name:"Income"}).name : cat.name;
+        var color = isIncome ? "var(--good)" : cat.color;
+        html += '<div class="entry-row" data-id="'+e.id+'">';
+        html += '<div class="entry-head"><span class="swatch" style="background:'+color+'"></span><div class="entry-note"><div class="n">'+escapeHtml(e.note || label)+'</div><div class="entry-meta">'+label+' · '+e.date+'</div></div>' +
+          '<div class="entry-amount num '+(isIncome?"amount-income":"amount-expense")+'">'+(isIncome?"+":"−")+fmt(e.amount)+'</div></div>';
+        if(confirmDeleteId === e.id){
+          html += '<div class="entry-actions"><button class="btn btn-danger btn-sm" data-confirm-del="'+e.id+'">Confirm delete</button><button class="btn btn-ghost btn-sm" data-cancel-del="'+e.id+'">Cancel</button></div>';
+        } else {
+          html += '<div class="entry-actions"><button class="btn btn-ghost btn-sm" data-del="'+e.id+'">Delete</button></div>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    main.innerHTML = html;
+    document.getElementById("prevM2").addEventListener("click", function(){ shiftMonth(-1); });
+    document.getElementById("nextM2").addEventListener("click", function(){ shiftMonth(1); });
+    document.getElementById("filterChips").addEventListener("click", function(ev){
+      var b = ev.target.closest("button[data-f]"); if(!b) return;
+      historyFilter = b.getAttribute("data-f");
+      render();
+    });
+    main.querySelectorAll("[data-del]").forEach(function(b){
+      b.addEventListener("click", function(){ confirmDeleteId = b.getAttribute("data-del"); render(); });
+    });
+    main.querySelectorAll("[data-cancel-del]").forEach(function(b){
+      b.addEventListener("click", function(){ confirmDeleteId = null; render(); });
+    });
+    main.querySelectorAll("[data-confirm-del]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var id = b.getAttribute("data-confirm-del");
+        state.entries = state.entries.filter(function(e){ return e.id !== id; });
+        confirmDeleteId = null;
+        saveState();
+        toast("Entry deleted");
+        render();
+      });
+    });
+  }
+
+  // ================= SETTINGS TAB =================
+  var newCatName = "";
+  var backupMode = null; // null | "export" | "import"
+  var importText = "";
+  var confirmClear = false;
+
+  function renderSettings(){
+    setHeaderSub("Budgets, categories & data");
+    var html = '<div class="stack">';
+
+    html += '<div class="section-title">General</div>';
+    html += '<div class="card stack">';
+    html += '<label class="field">Currency<select id="currencySelect">';
+    CURRENCIES.forEach(function(c){
+      html += '<option value="'+c.code+'" '+(state.settings.currency===c.code?"selected":"")+'>'+c.label+'</option>';
+    });
+    html += '</select></label>';
+    html += '<label class="field">Usual fixed salary (fills the amount in automatically when you log it as income)<input id="salaryInput" type="number" inputmode="decimal" min="0" step="0.01" value="'+(state.settings.salary||"")+'"></label>';
+    html += '<label class="field">Alert when balance drops to or below<input id="lowBalanceInput" type="number" inputmode="decimal" min="0" step="0.01" value="'+(state.settings.lowBalanceAlert||"")+'" placeholder="e.g. 1500"></label>';
+    html += '<div class="row-between"><span>Speak confirmations aloud</span><label class="switch"><input type="checkbox" id="ttsToggle" '+(state.settings.ttsEnabled?"checked":"")+'><span class="track"></span><span class="knob"></span></label></div>';
+    html += '<div class="muted">Speaking a confirmation can briefly interrupt music playing from another app — iPhone web pages cannot prevent this, only native apps can. Turn it off above if that is more annoying than helpful.</div>';
+    html += '</div>';
+
+    html += '<div class="section-title">Monthly budgets</div>';
+    html += '<div class="card" id="budgetList">';
+    state.categories.forEach(function(c){
+      html += '<div class="budget-input-row"><span class="row" style="gap:8px;"><span class="swatch" style="background:'+c.color+'"></span>'+escapeHtml(c.name)+'</span>' +
+        '<input type="number" inputmode="decimal" min="0" step="0.01" data-budget="'+c.id+'" value="'+(c.budget||"")+'" placeholder="0.00"></div>';
+    });
+    html += '</div>';
+
+    html += '<div class="section-title">Custom categories</div>';
+    html += '<div class="card stack">';
+    var customOnes = state.categories.filter(function(c){ return c.custom; });
+    if(customOnes.length){
+      customOnes.forEach(function(c){
+        html += '<div class="row-between"><span class="row" style="gap:8px;"><span class="swatch" style="background:'+c.color+'"></span>'+escapeHtml(c.name)+'</span><button class="btn btn-ghost btn-sm" data-removecat="'+c.id+'">Remove</button></div>';
+      });
+    } else {
+      html += '<div class="muted">None yet. Add one below for spending that does not fit the defaults.</div>';
+    }
+    html += '<div class="row"><input id="newCatInput" type="text" placeholder="e.g. Pet care" value="'+escapeAttr(newCatName)+'" style="flex:1;"><button class="btn btn-primary btn-sm" id="addCatBtn">Add</button></div>';
+    html += '</div>';
+
+    html += '<div class="section-title">Your data</div>';
+    html += '<div class="card stack">';
+    html += '<div class="muted">Everything is stored only on this phone, in this browser. Back it up now and then by copying it somewhere safe, like Notes.</div>';
+    html += '<div class="row"><button class="btn btn-ghost btn-sm" id="exportBtn">Copy backup</button><button class="btn btn-ghost btn-sm" id="importBtn">Restore backup</button></div>';
+    if(backupMode === "export"){
+      html += '<textarea id="exportArea" readonly>'+escapeHtml(JSON.stringify(state))+'</textarea><button class="btn btn-ghost btn-sm" id="copyNowBtn">Copy to clipboard</button>';
+    }
+    if(backupMode === "import"){
+      html += '<textarea id="importArea" placeholder="Paste a previously copied backup here">'+escapeHtml(importText)+'</textarea><button class="btn btn-primary btn-sm" id="applyImportBtn">Restore</button>';
+    }
+    html += '<hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">';
+    if(!confirmClear){
+      html += '<button class="btn btn-danger btn-sm" id="clearBtn">Clear all data</button>';
+    } else {
+      html += '<div class="muted">This deletes every entry and setting on this phone. This cannot be undone.</div><div class="row"><button class="btn btn-danger btn-sm" id="confirmClearBtn">Yes, delete everything</button><button class="btn btn-ghost btn-sm" id="cancelClearBtn">Cancel</button></div>';
+    }
+    html += '</div>';
+
+    html += '</div>';
+    main.innerHTML = html;
+
+    document.getElementById("currencySelect").addEventListener("change", function(ev){ state.settings.currency = ev.target.value; saveState(); render(); });
+    document.getElementById("salaryInput").addEventListener("change", function(ev){ state.settings.salary = parseFloat(ev.target.value) || 0; saveState(); });
+    document.getElementById("lowBalanceInput").addEventListener("change", function(ev){ state.settings.lowBalanceAlert = parseFloat(ev.target.value) || 0; saveState(); });
+    document.getElementById("ttsToggle").addEventListener("change", function(ev){ state.settings.ttsEnabled = ev.target.checked; saveState(); });
+
+    main.querySelectorAll("[data-budget]").forEach(function(inp){
+      inp.addEventListener("change", function(){
+        var id = inp.getAttribute("data-budget");
+        catById(id).budget = parseFloat(inp.value) || 0;
+        saveState();
+        toast("Budget updated");
+      });
+    });
+
+    main.querySelectorAll("[data-removecat]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var id = b.getAttribute("data-removecat");
+        state.categories = state.categories.filter(function(c){ return c.id !== id; });
+        saveState(); render();
+      });
+    });
+
+    document.getElementById("newCatInput").addEventListener("input", function(ev){ newCatName = ev.target.value; });
+    document.getElementById("addCatBtn").addEventListener("click", function(){
+      var name = newCatName.trim();
+      if(!name) return;
+      var color = CAT_PALETTE[state.categories.length % CAT_PALETTE.length];
+      state.categories.push({ id:"custom-"+uid(), name:name, color:color, budget:0, custom:true });
+      newCatName = "";
+      saveState();
+      toast("Category added");
+      render();
+    });
+
+    document.getElementById("exportBtn").addEventListener("click", function(){ backupMode = backupMode==="export" ? null : "export"; render(); });
+    document.getElementById("importBtn").addEventListener("click", function(){ backupMode = backupMode==="import" ? null : "import"; render(); });
+    var copyNowBtn = document.getElementById("copyNowBtn");
+    if(copyNowBtn){
+      copyNowBtn.addEventListener("click", function(){
+        var text = JSON.stringify(state);
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(function(){ toast("Copied to clipboard"); }).catch(function(){
+            var ta = document.getElementById("exportArea"); ta.select(); toast("Select & copy manually");
+          });
+        } else {
+          var ta = document.getElementById("exportArea"); ta.select(); toast("Select & copy manually");
+        }
+      });
+    }
+    var importArea = document.getElementById("importArea");
+    if(importArea){ importArea.addEventListener("input", function(ev){ importText = ev.target.value; }); }
+    var applyImportBtn = document.getElementById("applyImportBtn");
+    if(applyImportBtn){
+      applyImportBtn.addEventListener("click", function(){
+        try{
+          var parsed = JSON.parse(importText);
+          if(!parsed || typeof parsed !== "object") throw new Error("bad");
+          state = {
+            settings: Object.assign(defaultState().settings, parsed.settings || {}),
+            categories: Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : defaultState().categories,
+            entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+            learned: parsed.learned || {}
+          };
+          saveState();
+          backupMode = null; importText = "";
+          toast("Backup restored");
+          render();
+        }catch(e){
+          toast("That did not look like a valid backup");
+        }
+      });
+    }
+
+    var clearBtn = document.getElementById("clearBtn");
+    if(clearBtn) clearBtn.addEventListener("click", function(){ confirmClear = true; render(); });
+    var confirmClearBtn = document.getElementById("confirmClearBtn");
+    if(confirmClearBtn) confirmClearBtn.addEventListener("click", function(){
+      state = defaultState(); saveState(); confirmClear = false; toast("All data cleared"); render();
+    });
+    var cancelClearBtn = document.getElementById("cancelClearBtn");
+    if(cancelClearBtn) cancelClearBtn.addEventListener("click", function(){ confirmClear = false; render(); });
+  }
+
+  // ---------- utils ----------
+  function escapeHtml(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];
+    });
+  }
+  function escapeAttr(s){ return escapeHtml(s); }
+
+  render();
+})();
+</script>
+
+<script>
+  // Registers the service worker that lets this app open with zero network
+  // signal after the first successful load (see sw.js).
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function (err) {
+        console.warn("Service worker registration failed:", err);
+      });
+    });
+  }
+</script>
+
+</body></html>
