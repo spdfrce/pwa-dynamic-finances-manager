@@ -1,7 +1,7 @@
 # EDNA - Enhanced Dynamic Needs Allocator (PWA)
 
 
-Voice-friendly expense & income tracker, built for Edna. Originally a
+Voice-friendly expense & income tracker. Originally a
 single-file [Claude Artifact](https://claude.ai/artifact/QXSemi3UzWEBCfXfceCE95);
 this repo repackages the same app as an installable, offline-capable PWA.
 
@@ -18,14 +18,6 @@ this repo repackages the same app as an installable, offline-capable PWA.
 - `netlify.toml`: stops Netlify's CDN from caching `sw.js`/`manifest.json`,
   so updates aren't stuck invisible after a redeploy.
 
-## Deploying (Netlify, drag-and-drop)
-
-1. Go to [app.netlify.com](https://app.netlify.com) and sign up (free,
-   email or GitHub login).
-2. From the dashboard, drag this whole folder onto the "Add new site" /
-   deploy drop zone.
-3. Netlify gives you a `*.netlify.app` URL immediately; that's the live
-   app.
 
 To redeploy after a change: bump `CACHE_VERSION` at the top of `sw.js`,
 then drag the folder onto the same site again (or connect the site to this
