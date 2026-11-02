@@ -730,6 +730,10 @@
       '</div>';
     html += '</div>';
 
+    if(backupIsDue()){
+      html += '<div class="callout row-between" style="margin-top:14px;"><span>'+(backupAgeDays()===null ? "No backup saved yet" : "Last backup was "+backupAgeDays()+" days ago")+'</span><button class="btn btn-ghost btn-sm" id="nudgeBackupBtn">Back up now</button></div>';
+    }
+
     var alertLevel = state.settings.lowBalanceAlert || 0;
     if(alertLevel > 0 && balance <= alertLevel){
       html += '<div class="callout" style="margin-top:14px; border-color:var(--danger);"><span class="status-danger" style="font-weight:700;">Balance is at or below '+fmt(alertLevel)+'</span></div>';
@@ -788,6 +792,8 @@
     main.innerHTML = html;
     document.getElementById("prevM").addEventListener("click", function(){ shiftMonth(-1); });
     document.getElementById("nextM").addEventListener("click", function(){ shiftMonth(1); });
+    var nudge = document.getElementById("nudgeBackupBtn");
+    if(nudge) nudge.addEventListener("click", saveBackup);
   }
 
   function shiftMonth(delta){
@@ -967,8 +973,108 @@
 
   // ================= SETTINGS TAB =================
   var newCatName = "";
-  var backupMode = null; // null | "export" | "import"
-  var importText = "";
+  var pendingRestore = null; // { data, exportedAt, count } while she confirms a restore
+
+  // ---------- backup file ----------
+  // A backup is one small JSON file. On iPhone it goes through the share sheet,
+  // so she can "Save to Files" (iCloud Drive) or send it on WhatsApp/email.
+  function backupAgeDays(){
+    var t = state.settings.lastBackupAt;
+    return t ? Math.floor((Date.now() - t) / 86400000) : null;
+  }
+  function lastBackupText(){
+    var d = backupAgeDays();
+    if(d === null) return "No backup saved yet";
+    if(d === 0) return "Last backup: today";
+    if(d === 1) return "Last backup: yesterday";
+    return "Last backup: " + d + " days ago";
+  }
+  function backupIsDue(){
+    if(!state.entries.length) return false;
+    var d = backupAgeDays();
+    if(d === null){
+      var oldest = Math.min.apply(null, state.entries.map(function(e){ return e.createdAt || Date.now(); }));
+      return (Date.now() - oldest) > 7 * 86400000;
+    }
+    return d >= 30;
+  }
+  function markBackedUp(){
+    state.settings.lastBackupAt = Date.now();
+    saveState();
+    toast("Backup saved", { success:true });
+    render();
+  }
+  function saveBackup(){
+    var payload = { app:"EDNA", version:1, exportedAt: new Date().toISOString(), data: state };
+    var name = "EDNA-backup-" + todayISO() + ".json";
+    var text = JSON.stringify(payload);
+    var file = null;
+    try{ file = new File([text], name, { type:"application/json" }); }catch(e){}
+    if(file && navigator.canShare && navigator.canShare({ files:[file] })){
+      navigator.share({ files:[file], title:"EDNA backup" }).then(markBackedUp).catch(function(err){
+        if(err && err.name === "AbortError") return; // she closed the share sheet
+        downloadBackup(text, name);
+      });
+    } else {
+      downloadBackup(text, name);
+    }
+  }
+  function downloadBackup(text, name){
+    var url = URL.createObjectURL(new Blob([text], { type:"application/json" }));
+    var a = document.createElement("a");
+    a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1000);
+    markBackedUp();
+  }
+  // Accepts the new file format and the older copy/paste text format.
+  function readBackup(text){
+    var parsed = JSON.parse(text);
+    var data = parsed && parsed.data && parsed.app === "EDNA" ? parsed.data : parsed;
+    if(!data || typeof data !== "object" || !Array.isArray(data.entries)) throw new Error("bad");
+    var base = defaultState();
+    return {
+      exportedAt: parsed.exportedAt || null,
+      data: {
+        settings: Object.assign(base.settings, data.settings || {}),
+        categories: Array.isArray(data.categories) && data.categories.length ? data.categories : base.categories,
+        entries: data.entries,
+        learned: data.learned || {}
+      }
+    };
+  }
+  function pickRestoreFile(){
+    var input = document.createElement("input");
+    input.type = "file"; input.accept = "application/json,.json";
+    input.addEventListener("change", function(){
+      var f = input.files && input.files[0]; if(!f) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        try{
+          var r = readBackup(String(reader.result));
+          pendingRestore = { data:r.data, exportedAt:r.exportedAt, count:r.data.entries.length };
+          activeTab = "settings";
+          render();
+          var box = document.getElementById("restoreConfirm");
+          if(box) box.scrollIntoView({ block:"center", behavior:"smooth" });
+        }catch(e){ toast("That file is not an EDNA backup"); }
+      };
+      reader.readAsText(f);
+    });
+    input.click();
+  }
+  function applyRestore(){
+    if(!pendingRestore) return;
+    var previous = JSON.parse(JSON.stringify(state));
+    var keepBackupAt = state.settings.lastBackupAt;
+    state = pendingRestore.data;
+    if(keepBackupAt) state.settings.lastBackupAt = keepBackupAt;
+    pendingRestore = null;
+    saveState();
+    toast("Backup restored · " + state.entries.length + " entries", { success:true, actions:[ { label:"Undo", run:function(){
+      state = previous; saveState(); toast("Restore undone"); render();
+    } } ] });
+    render();
+  }
   var confirmClear = false;
 
   function renderSettings(){
@@ -1011,13 +1117,15 @@
 
     html += '<div class="section-title">Your data</div>';
     html += '<div class="card stack">';
-    html += '<div class="muted">Everything is stored only on this phone, in this browser. Back it up now and then by copying it somewhere safe, like Notes.</div>';
-    html += '<div class="row"><button class="btn btn-ghost btn-sm" id="exportBtn">Copy backup</button><button class="btn btn-ghost btn-sm" id="importBtn">Restore backup</button></div>';
-    if(backupMode === "export"){
-      html += '<textarea id="exportArea" readonly>'+escapeHtml(JSON.stringify(state))+'</textarea><button class="btn btn-ghost btn-sm" id="copyNowBtn">Copy to clipboard</button>';
-    }
-    if(backupMode === "import"){
-      html += '<textarea id="importArea" placeholder="Paste a previously copied backup here">'+escapeHtml(importText)+'</textarea><button class="btn btn-primary btn-sm" id="applyImportBtn">Restore</button>';
+    html += '<div class="muted">Everything is stored only on this phone. Save a backup file to iCloud Drive (Save to Files) or send it to yourself, so nothing is lost if the phone is.</div>';
+    html += '<div class="row-between"><span'+(backupIsDue()?' class="status-warn" style="font-weight:600;"':'')+'>'+lastBackupText()+'</span></div>';
+    html += '<div class="btn-pair"><button class="btn btn-primary" id="saveBackupBtn">Save backup</button><button class="btn btn-ghost" id="restoreBtn">Restore from file</button></div>';
+    if(pendingRestore){
+      var from = pendingRestore.exportedAt ? new Date(pendingRestore.exportedAt).toLocaleDateString(undefined, { day:"numeric", month:"short", year:"numeric" }) : null;
+      html += '<div class="edit-panel stack" id="restoreConfirm"><div><strong>Restore this backup?</strong><div class="muted">'+
+        (from ? 'Saved '+from+', with ' : 'It has ')+pendingRestore.count+' entr'+(pendingRestore.count===1?'y':'ies')+
+        '. It replaces the '+state.entries.length+' entr'+(state.entries.length===1?'y':'ies')+' on this phone.</div></div>'+
+        '<div class="btn-pair"><button class="btn btn-ghost" id="cancelRestoreBtn">Cancel</button><button class="btn btn-primary" id="confirmRestoreBtn">Replace</button></div></div>';
     }
     html += '<hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">';
     if(!confirmClear){
@@ -1064,44 +1172,12 @@
       render();
     });
 
-    document.getElementById("exportBtn").addEventListener("click", function(){ backupMode = backupMode==="export" ? null : "export"; render(); });
-    document.getElementById("importBtn").addEventListener("click", function(){ backupMode = backupMode==="import" ? null : "import"; render(); });
-    var copyNowBtn = document.getElementById("copyNowBtn");
-    if(copyNowBtn){
-      copyNowBtn.addEventListener("click", function(){
-        var text = JSON.stringify(state);
-        if(navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(text).then(function(){ toast("Copied to clipboard"); }).catch(function(){
-            var ta = document.getElementById("exportArea"); ta.select(); toast("Select & copy manually");
-          });
-        } else {
-          var ta = document.getElementById("exportArea"); ta.select(); toast("Select & copy manually");
-        }
-      });
-    }
-    var importArea = document.getElementById("importArea");
-    if(importArea){ importArea.addEventListener("input", function(ev){ importText = ev.target.value; }); }
-    var applyImportBtn = document.getElementById("applyImportBtn");
-    if(applyImportBtn){
-      applyImportBtn.addEventListener("click", function(){
-        try{
-          var parsed = JSON.parse(importText);
-          if(!parsed || typeof parsed !== "object") throw new Error("bad");
-          state = {
-            settings: Object.assign(defaultState().settings, parsed.settings || {}),
-            categories: Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : defaultState().categories,
-            entries: Array.isArray(parsed.entries) ? parsed.entries : [],
-            learned: parsed.learned || {}
-          };
-          saveState();
-          backupMode = null; importText = "";
-          toast("Backup restored");
-          render();
-        }catch(e){
-          toast("That did not look like a valid backup");
-        }
-      });
-    }
+    document.getElementById("saveBackupBtn").addEventListener("click", saveBackup);
+    document.getElementById("restoreBtn").addEventListener("click", pickRestoreFile);
+    var confirmRestoreBtn = document.getElementById("confirmRestoreBtn");
+    if(confirmRestoreBtn) confirmRestoreBtn.addEventListener("click", applyRestore);
+    var cancelRestoreBtn = document.getElementById("cancelRestoreBtn");
+    if(cancelRestoreBtn) cancelRestoreBtn.addEventListener("click", function(){ pendingRestore = null; render(); });
 
     var clearBtn = document.getElementById("clearBtn");
     if(clearBtn) clearBtn.addEventListener("click", function(){ confirmClear = true; render(); });
