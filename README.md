@@ -1,6 +1,5 @@
 # EDNA - Enhanced Dynamic Needs Allocator (PWA)
 
-EDNA is named in honour of Edna, the person it was built for.
 
 Voice-friendly expense & income tracker, built for Edna. Originally a
 single-file [Claude Artifact](https://claude.ai/artifact/QXSemi3UzWEBCfXfceCE95);
