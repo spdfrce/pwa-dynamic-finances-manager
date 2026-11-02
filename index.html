@@ -18,6 +18,7 @@
     --cat1:#B4593A; --cat2:#7C6CAE; --cat3:#3B7EA1; --cat4:#D08A3C; --cat5:#4F8F6B;
     --cat6:#B2457B; --cat7:#5B5B66; --cat8:#8A6E3C; --cat9:#767567;
     --radius:14px;
+    --snack-action:#A9DCD6;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -27,6 +28,7 @@
       --good:#6FBE8C; --warn:#E0AA4E; --danger:#E0695F;
       --cat1:#D98664; --cat2:#A79BD1; --cat3:#6FAFD1; --cat4:#E8B06B; --cat5:#7FBE9C;
       --cat6:#D481A8; --cat7:#8C8C99; --cat8:#BFA06A; --cat9:#A6A496;
+      --snack-action:#1F5F5A;
       color-scheme: dark;
     }
   }
@@ -37,6 +39,7 @@
     --good:#6FBE8C; --warn:#E0AA4E; --danger:#E0695F;
     --cat1:#D98664; --cat2:#A79BD1; --cat3:#6FAFD1; --cat4:#E8B06B; --cat5:#7FBE9C;
     --cat6:#D481A8; --cat7:#8C8C99; --cat8:#BFA06A; --cat9:#A6A496;
+    --snack-action:#1F5F5A;
     color-scheme: dark;
   }
 
@@ -138,15 +141,21 @@
   :root[data-theme="dark"] .segmented button.active{ color:var(--accent); }
 
   .btn{
-    appearance:none; border:none; border-radius:12px; padding:14px; font-weight:600; font-size:1rem;
+    appearance:none; border:1.5px solid transparent; border-radius:14px; padding:0 12px; min-height:52px; white-space:nowrap;
+    font-weight:600; font-size:1rem; line-height:1.2; letter-spacing:.005em;
     cursor:pointer; width:100%; text-align:center;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    transition:transform .08s ease, opacity .15s ease, background-color .15s ease;
+    -webkit-tap-highlight-color:transparent;
   }
+  .btn:active{ transform:scale(.98); opacity:.9; }
   .btn-primary{ background:var(--ink); color:var(--surface); }
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .btn-primary{ background:var(--accent); color:var(--accent-fg); } }
   :root[data-theme="dark"] .btn-primary{ background:var(--accent); color:var(--accent-fg); }
-  .btn-ghost{ background:var(--surface-2); color:var(--fg); }
-  .btn-danger{ background:transparent; color:var(--danger); border:1px solid var(--danger); }
-  .btn-sm{ padding:10px 14px; font-size:.92rem; width:auto; }
+  .btn-ghost{ background:var(--surface); color:var(--fg); border-color:var(--border); }
+  .btn-danger{ background:var(--danger); color:#fff; border-color:var(--danger); }
+  .btn-danger-outline{ background:transparent; color:var(--danger); border-color:var(--danger); }
+  .btn-sm{ min-height:42px; padding:0 12px; font-size:.95rem; width:auto; border-radius:12px; }
 
   .preview-box{ border:1px dashed var(--border); border-radius:12px; padding:12px; background:var(--surface-2); }
   .preview-amount{ font-family:var(--font); font-weight:700; font-size:1.5rem; }
@@ -162,16 +171,40 @@
   .entry-actions{ display:flex; gap:8px; margin-top:10px; }
   .entry-head{ cursor:pointer; border-radius:10px; }
   .entry-row.editing .entry-head{ padding-bottom:4px; }
-  .edit-panel{ margin-top:12px; padding:14px; border-radius:12px; background:var(--surface-2); }
+  .edit-panel{ margin-top:12px; padding:12px; border-radius:12px; background:var(--surface-2); }
   .btn-pair{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .btn-link-danger{ background:none; color:var(--danger); padding:8px; font-weight:600; }
 
   .toast{
-    position:fixed; left:50%; bottom:92px; transform:translateX(-50%);
-    background:var(--ink); color:var(--surface); padding:10px 16px; border-radius:999px;
-    font-size:.92rem; opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:50; max-width:85%; text-align:center;
+    position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom, 0px));
+    width:min(448px, calc(100% - 24px));
+    transform:translate(-50%, 16px); opacity:0; pointer-events:none;
+    transition:opacity .2s ease, transform .22s ease; z-index:50;
+    background:var(--ink); color:var(--surface); border-radius:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);
+    display:flex; align-items:center; gap:10px; padding:10px 8px 10px 14px; min-height:52px;
   }
-  .toast.show{ opacity:1; }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); pointer-events:auto; }
+  .toast .t-icon{ flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:var(--good); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; }
+  .toast .t-msg{ flex:1 1 auto; min-width:0; font-size:.95rem; line-height:1.35; }
+  .toast .t-msg small{ display:block; opacity:.8; font-size:.82rem; }
+  .toast .t-actions{ flex:0 0 auto; display:flex; gap:2px; }
+  .toast .t-actions button{ appearance:none; border:none; background:none; color:var(--snack-action);
+    font:inherit; font-weight:700; font-size:.92rem; padding:10px; border-radius:10px; cursor:pointer; }
+  .toast .t-actions button:active{ background:rgba(255,255,255,.12); }
+  @media (prefers-reduced-motion: reduce){ .toast{ transition:opacity .2s ease; transform:translate(-50%,0); } }
+
+  .splash{ position:fixed; inset:0; z-index:100; background:#16302D; color:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px;
+    transition:opacity .35s ease; cursor:pointer; }
+  .splash.hide{ opacity:0; pointer-events:none; }
+  .splash .s-name{ font-size:3.2rem; font-weight:800; letter-spacing:.14em; margin-left:.14em; line-height:1;
+    animation:splashIn .5s ease both; }
+  .splash .s-full{ margin-top:14px; font-size:1rem; opacity:.82; letter-spacing:.02em;
+    animation:splashIn .5s .12s ease both; }
+  @keyframes splashIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce){ .splash .s-name, .splash .s-full{ animation:none; } }
 
   .empty{ padding:20px 16px; color:var(--fg-muted); }
   .empty h3{ color:var(--fg); margin-bottom:6px; }
@@ -206,7 +239,8 @@
     <button data-tab="settings"><span class="dot"></span>Settings</button>
   </nav>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="splash" id="splash" aria-hidden="true"><div class="s-name">EDNA</div><div class="s-full">Enhanced Dynamic Needs Allocator</div></div>
 
 <script>
 (function(){
@@ -360,13 +394,54 @@
   }
 
   // ---------- toast ----------
+  // One bar at the bottom for every message. toast(msg) is a short plain note;
+  // pass opts to add a check icon, a second line and action buttons (Undo/Edit).
   var toastTimer = null;
-  function toast(msg){
+  function hideToast(){
+    clearTimeout(toastTimer);
     var el = document.getElementById("toast");
-    el.textContent = msg;
+    if(el) el.classList.remove("show");
+  }
+  function toast(msg, opts){
+    opts = opts || {};
+    var el = document.getElementById("toast");
+    el.innerHTML = '';
+    if(opts.success){ var ic = document.createElement("span"); ic.className = "t-icon"; ic.textContent = "\u2713"; el.appendChild(ic); }
+    var m = document.createElement("div"); m.className = "t-msg"; m.textContent = msg;
+    if(opts.detail){ var sm = document.createElement("small"); sm.textContent = opts.detail; m.appendChild(sm); }
+    m.addEventListener("click", hideToast);
+    el.appendChild(m);
+    if(opts.actions && opts.actions.length){
+      var a = document.createElement("div"); a.className = "t-actions";
+      opts.actions.forEach(function(act){
+        var b = document.createElement("button"); b.type = "button"; b.textContent = act.label;
+        b.addEventListener("click", function(){ hideToast(); act.run(); });
+        a.appendChild(b);
+      });
+      el.appendChild(a);
+    }
     el.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 2200);
+    toastTimer = setTimeout(hideToast, opts.actions && opts.actions.length ? 5500 : 2500);
+  }
+
+  function undoSave(id){
+    state.entries = state.entries.filter(function(e){ return e.id !== id; });
+    saveState();
+    toast("Entry removed");
+    render();
+  }
+  function editSaved(id){
+    var e = state.entries.find(function(x){ return x.id === id; });
+    if(!e) return;
+    var d = new Date(e.date + "T00:00:00");
+    viewMonth = { y:d.getFullYear(), m:d.getMonth() };
+    historyFilter = "all";
+    activeTab = "history";
+    startEdit(id);
+    render();
+    var row = document.querySelector('.entry-row[data-id="'+id+'"]');
+    if(row) row.scrollIntoView({ block:"start", behavior:"smooth" });
   }
 
   // ---------- month helpers ----------
@@ -434,6 +509,7 @@
     var btn = ev.target.closest("button[data-tab]");
     if(!btn) return;
     activeTab = btn.getAttribute("data-tab");
+    hideToast();
     editId = null; editDraft = null; confirmDeleteId = null;
     render();
   });
@@ -542,7 +618,9 @@
         var catName = catById(cid).name;
         var warn = lowBalanceWarningText(addDraft.date);
         speak("Logged " + amt + " " + state.settings.currency + " for " + catName + "." + (warn ? " " + warn : ""));
-        toast("Saved " + fmt(amt) + " under " + catName + (warn ? " · " + warn : ""));
+        var savedId = entry.id;
+        toast("Saved " + fmt(amt) + " · " + catName, { success:true, detail: warn || null,
+          actions:[ { label:"Undo", run:function(){ undoSave(savedId); } }, { label:"Edit", run:function(){ editSaved(savedId); } } ] });
         addDraft = { entryType:"expense", text:"", amount:null, categoryId:null, subcatId:null, date: todayISO(), incomeSource:"salary", incomeAmount:"" };
         render();
       });
@@ -570,7 +648,9 @@
         saveState();
         var warn = lowBalanceWarningText(addDraft.date);
         speak("Logged " + amt + " " + state.settings.currency + " as " + srcName + "." + (warn ? " " + warn : ""));
-        toast("Saved " + fmt(amt) + " as " + srcName + (warn ? " · " + warn : ""));
+        var savedIncId = entry.id;
+        toast("Saved " + fmt(amt) + " · " + srcName, { success:true, detail: warn || null,
+          actions:[ { label:"Undo", run:function(){ undoSave(savedIncId); } }, { label:"Edit", run:function(){ editSaved(savedIncId); } } ] });
         addDraft.incomeAmount = ""; addDraft.incomeNote = "";
         render();
       });
@@ -803,7 +883,7 @@
       e.updatedAt = Date.now();
       saveState();
       editId = null; editDraft = null;
-      toast("Changes saved");
+      toast("Changes saved", { success:true });
       render();
     });
   }
@@ -873,10 +953,13 @@
     main.querySelectorAll("[data-confirm-del]").forEach(function(b){
       b.addEventListener("click", function(){
         var id = b.getAttribute("data-confirm-del");
+        var removed = state.entries.find(function(e){ return e.id === id; });
         state.entries = state.entries.filter(function(e){ return e.id !== id; });
         confirmDeleteId = null; editId = null; editDraft = null;
         saveState();
-        toast("Entry deleted");
+        toast("Entry deleted", { actions:[ { label:"Undo", run:function(){
+          if(removed){ state.entries.push(removed); saveState(); toast("Entry restored", { success:true }); render(); }
+        } } ] });
         render();
       });
     });
@@ -938,7 +1021,7 @@
     }
     html += '<hr style="border:none;border-top:1px solid var(--border);margin:4px 0;">';
     if(!confirmClear){
-      html += '<button class="btn btn-danger btn-sm" id="clearBtn">Clear all data</button>';
+      html += '<button class="btn btn-danger-outline btn-sm" id="clearBtn">Clear all data</button>';
     } else {
       html += '<div class="muted">This deletes every entry and setting on this phone. This cannot be undone.</div><div class="row"><button class="btn btn-danger btn-sm" id="confirmClearBtn">Yes, delete everything</button><button class="btn btn-ghost btn-sm" id="cancelClearBtn">Cancel</button></div>';
     }
@@ -1045,6 +1128,14 @@
 <script>
   // Registers the service worker that lets this app open with zero network
   // signal after the first successful load (see sw.js).
+  (function(){
+    var sp = document.getElementById("splash");
+    if(!sp) return;
+    function go(){ sp.classList.add("hide"); setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); }, 400); }
+    sp.addEventListener("click", go);
+    setTimeout(go, 1200);
+  })();
+
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("sw.js").catch(function (err) {
