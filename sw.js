@@ -1,7 +1,7 @@
 // Bump this string any time index.html (or any cached file) changes and gets
 // redeployed, it's the only thing that makes the service worker fetch the
 // new version instead of serving the old one forever from cache.
-var CACHE_VERSION = "v4";
+var CACHE_VERSION = "v5";
 var CACHE_NAME = "edna-tracker-" + CACHE_VERSION;
 
 var PRECACHE_URLS = [
