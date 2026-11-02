@@ -1,4 +1,4 @@
-# EDNA — Enhanced Dynamic Needs Allocator (PWA)
+# EDNA - Enhanced Dynamic Needs Allocator (PWA)
 
 EDNA is named in honour of Edna, the person it was built for.
 
@@ -8,24 +8,24 @@ this repo repackages the same app as an installable, offline-capable PWA.
 
 ## Files
 
-- `index.html` — the whole app (HTML/CSS/JS, unchanged from the artifact
+- `index.html`: the whole app (HTML/CSS/JS, unchanged from the artifact
   except for the PWA tags and service-worker registration added at the top
   and bottom).
-- `manifest.json` — tells iOS/Android this is an installable app (name,
+- `manifest.json`: tells iOS/Android this is an installable app (name,
   icon, colors).
-- `sw.js` — the service worker. Caches the app's files on first load so it
+- `sw.js`: the service worker. Caches the app's files on first load so it
   can open with zero signal after that.
-- `icons/` — generated app icons.
-- `netlify.toml` — stops Netlify's CDN from caching `sw.js`/`manifest.json`,
+- `icons/`: generated app icons.
+- `netlify.toml`: stops Netlify's CDN from caching `sw.js`/`manifest.json`,
   so updates aren't stuck invisible after a redeploy.
 
 ## Deploying (Netlify, drag-and-drop)
 
-1. Go to [app.netlify.com](https://app.netlify.com) and sign up (free —
+1. Go to [app.netlify.com](https://app.netlify.com) and sign up (free,
    email or GitHub login).
 2. From the dashboard, drag this whole folder onto the "Add new site" /
    deploy drop zone.
-3. Netlify gives you a `*.netlify.app` URL immediately — that's the live
+3. Netlify gives you a `*.netlify.app` URL immediately; that's the live
    app.
 
 To redeploy after a change: bump `CACHE_VERSION` at the top of `sw.js`,
@@ -36,7 +36,7 @@ GitHub repo in Netlify's dashboard for auto-deploys on every push).
 
 1. Open the Netlify URL in **Safari**.
 2. Tap Share → **Add to Home Screen**.
-3. Open it from the home screen icon — it runs full-screen, no Safari bar.
+3. Open it from the home screen icon; it runs full-screen, no Safari bar.
 4. To confirm offline works: turn on Airplane Mode, then open the app from
    the home screen icon.
 

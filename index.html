@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EDNA">
 <style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>EDNA — Enhanced Dynamic Needs Allocator</title>
+<title>EDNA - Enhanced Dynamic Needs Allocator</title>
 <style>
   :root{
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Helvetica Neue", Arial, sans-serif;
@@ -78,8 +78,7 @@
   }
 
   .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
-  .card-centered{ text-align:center; }
-  .card-centered .balance-grid{ text-align:left; }
+
   .stack{ display:flex; flex-direction:column; gap:12px; }
   .row{ display:flex; align-items:center; gap:10px; }
   .row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -161,6 +160,11 @@
   .amount-expense{ color:var(--danger); } .amount-income{ color:var(--good); }
   .entry-meta{ font-size:.84rem; color:var(--fg-muted); margin-top:2px; }
   .entry-actions{ display:flex; gap:8px; margin-top:10px; }
+  .entry-head{ cursor:pointer; border-radius:10px; }
+  .entry-row.editing .entry-head{ padding-bottom:4px; }
+  .edit-panel{ margin-top:12px; padding:14px; border-radius:12px; background:var(--surface-2); }
+  .btn-pair{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .btn-link-danger{ background:none; color:var(--danger); padding:8px; font-weight:600; }
 
   .toast{
     position:fixed; left:50%; bottom:92px; transform:translateX(-50%);
@@ -169,7 +173,7 @@
   }
   .toast.show{ opacity:1; }
 
-  .empty{ text-align:center; padding:36px 12px; color:var(--fg-muted); }
+  .empty{ padding:20px 16px; color:var(--fg-muted); }
   .empty h3{ color:var(--fg); margin-bottom:6px; }
 
   .date-group-label{ font-size:.84rem; text-transform:uppercase; letter-spacing:.05em; color:var(--fg-muted); margin:18px 0 6px; }
@@ -292,7 +296,8 @@
 
   function fmt(n){
     var v = (Math.round((n||0) * 100) / 100);
-    return currencySymbol() + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    var s = Math.abs(v).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    return (v < 0 ? "−" : "") + currencySymbol() + s;
   }
 
   function catById(id){
@@ -391,7 +396,7 @@
     return { income:income, expense:expense, byCat:byCat };
   }
 
-  // Running balance through the end of the given month — every income entry adds,
+  // Running balance through the end of the given month, every income entry adds,
   // every expense subtracts, from the very first entry ever logged. This is what
   // makes October pick up where September's leftover balance ended.
   function lastDayISO(y, m){
@@ -429,6 +434,7 @@
     var btn = ev.target.closest("button[data-tab]");
     if(!btn) return;
     activeTab = btn.getAttribute("data-tab");
+    editId = null; editDraft = null; confirmDeleteId = null;
     render();
   });
 
@@ -450,14 +456,16 @@
   var addDraft = { entryType:"expense", text:"", amount:null, categoryId:null, subcatId:null, date: todayISO(), incomeSource:"salary", incomeAmount:"" };
 
   // Computes amount/category/subcategory fresh from the current draft every time it's
-  // called, instead of being baked into a render pass — this is what lets the preview
+  // called, instead of being baked into a render pass, this is what lets the preview
   // update without ever touching (and so never re-creating) the text box or amount input.
   function computeEffective(){
-    var parsed = addDraft.text ? parseCategory(addDraft.text) : null;
-    var parsedAmount = addDraft.text ? parseAmount(addDraft.text) : null;
+    // The amount comes ONLY from the Amount box. Numbers typed in the description
+    // are never read as the amount. The description still guesses the category.
+    var parsed = addDraft.text.trim() ? parseCategory(addDraft.text) : null;
     var categoryId = addDraft.categoryId || (parsed ? parsed.categoryId : null);
-    var subcatId = (addDraft.subcatId !== undefined && addDraft.subcatId !== null) ? addDraft.subcatId : (parsed ? parsed.subcatId : null);
-    var amount = addDraft.amount !== null ? addDraft.amount : parsedAmount;
+    var subcatId = (addDraft.subcatId !== undefined && addDraft.subcatId !== null) ? addDraft.subcatId :
+      (parsed && parsed.categoryId === categoryId ? parsed.subcatId : null);
+    var amount = addDraft.amount;
     return { parsed:parsed, categoryId:categoryId, subcatId:subcatId, amount:amount };
   }
 
@@ -471,9 +479,10 @@
     if(addDraft.entryType === "expense"){
       html += '<div class="stack" style="margin-top:18px;">';
       html += '<label class="field">What did you spend on?' +
-        '<textarea id="entryText" placeholder="e.g. 50 cedis on fuel today">'+escapeHtml(addDraft.text)+'</textarea>' +
+        '<textarea id="entryText" placeholder="e.g. Fuel at the station">'+escapeHtml(addDraft.text)+'</textarea>' +
         '</label>';
       html += '<div class="muted">Tip: tap the microphone on your keyboard to speak this instead of typing.</div>';
+      html += '<label class="field">Amount<input id="entryAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" value="'+(addDraft.amount!==null?addDraft.amount:"")+'"></label>';
       html += '<div id="previewArea"></div>';
       html += '<label class="field">Date<input id="entryDate" type="date" value="'+addDraft.date+'"></label>';
       html += '<button class="btn btn-primary" id="saveExpense">Save expense</button>';
@@ -502,12 +511,18 @@
 
     if(addDraft.entryType === "expense"){
       var ta = document.getElementById("entryText");
-      // Only ever touch the preview area below — never this textarea's own markup —
+      // Only ever touch the preview area below, never this textarea's own markup,
       // so the keyboard (and any numeric/caps lock toggle on it) never resets mid-sentence.
       ta.addEventListener("input", function(){
+        // Only the description changes here. The amount and any category she
+        // picked herself are left exactly as they are.
         addDraft.text = ta.value;
-        addDraft.categoryId = null; addDraft.subcatId = null; addDraft.amount = null;
         updatePreview();
+      });
+      var amtInput = document.getElementById("entryAmount");
+      amtInput.addEventListener("input", function(){
+        var v = parseFloat(amtInput.value);
+        addDraft.amount = (amtInput.value !== "" && !isNaN(v)) ? v : null;
       });
       document.getElementById("entryDate").addEventListener("change", function(ev){ addDraft.date = ev.target.value; });
 
@@ -527,7 +542,7 @@
         var catName = catById(cid).name;
         var warn = lowBalanceWarningText(addDraft.date);
         speak("Logged " + amt + " " + state.settings.currency + " for " + catName + "." + (warn ? " " + warn : ""));
-        toast("Saved — " + fmt(amt) + " under " + catName + (warn ? " · " + warn : ""));
+        toast("Saved " + fmt(amt) + " under " + catName + (warn ? " · " + warn : ""));
         addDraft = { entryType:"expense", text:"", amount:null, categoryId:null, subcatId:null, date: todayISO(), incomeSource:"salary", incomeAmount:"" };
         render();
       });
@@ -555,7 +570,7 @@
         saveState();
         var warn = lowBalanceWarningText(addDraft.date);
         speak("Logged " + amt + " " + state.settings.currency + " as " + srcName + "." + (warn ? " " + warn : ""));
-        toast("Saved — " + fmt(amt) + " as " + srcName + (warn ? " · " + warn : ""));
+        toast("Saved " + fmt(amt) + " as " + srcName + (warn ? " · " + warn : ""));
         addDraft.incomeAmount = ""; addDraft.incomeNote = "";
         render();
       });
@@ -569,25 +584,13 @@
     var area = document.getElementById("previewArea");
     if(!area) return;
 
-    if(!addDraft.text.trim()){
-      area.innerHTML = '';
-      return;
-    }
-
     var eff = computeEffective();
     var cat = eff.categoryId ? catById(eff.categoryId) : null;
     var kwCat = eff.categoryId ? keywordCatById(eff.categoryId) : null;
 
-    var html = '<div class="preview-box stack">';
-    html += '<div class="row-between"><span class="muted">Amount</span><span class="preview-amount num" id="amountPreviewText">'+ (eff.amount!==null ? fmt(eff.amount) : "—") +'</span></div>';
-    html += '<div id="manualAmountWrap">';
-    if(eff.amount === null){
-      html += '<label class="field">Or enter the amount manually<input id="manualAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"></label>';
-    }
-    html += '</div>';
-
+    var html = '<div class="stack">';
     html += '<div>';
-    html += '<div class="muted" style="margin-bottom:9px;">Category'+ (kwCat && kwCat.id!=="other" && !addDraft.categoryId ? ' — guessed from "'+escapeHtml(eff.parsed.matchedKeyword)+'"' : '') +'</div>';
+    html += '<div class="muted" style="margin-bottom:9px;">Category'+ (kwCat && kwCat.id!=="other" && !addDraft.categoryId && eff.parsed && eff.parsed.matchedKeyword ? ' (guessed from "'+escapeHtml(eff.parsed.matchedKeyword)+'")' : '') +'</div>';
     html += '<div class="chip-scroll" id="catChips">';
     state.categories.forEach(function(c){
       var sel = eff.categoryId === c.id;
@@ -607,18 +610,11 @@
     html += '</div>'; // preview-box
 
     area.innerHTML = html;
+    // Keep the selected (or guessed) category chip in view; only scrolls the chip
+    // row sideways, so it never moves focus away from the text box.
+    var selChip = area.querySelector("#catChips .chip.selected");
+    if(selChip){ var row = selChip.parentNode; row.scrollLeft = Math.max(0, selChip.offsetLeft - row.offsetLeft - 16); }
 
-    var manualAmt = document.getElementById("manualAmount");
-    if(manualAmt){
-      // Updates the amount display directly via textContent instead of calling
-      // updatePreview() again, so this field (like the main textarea) is never
-      // rebuilt while she's actively typing a digit into it.
-      manualAmt.addEventListener("input", function(){
-        addDraft.amount = manualAmt.value ? parseFloat(manualAmt.value) : null;
-        var amountText = document.getElementById("amountPreviewText");
-        if(amountText) amountText.textContent = addDraft.amount !== null ? fmt(addDraft.amount) : "—";
-      });
-    }
     document.getElementById("catChips").addEventListener("click", function(ev){
       var b = ev.target.closest("button[data-cat]"); if(!b) return;
       addDraft.categoryId = b.getAttribute("data-cat");
@@ -645,18 +641,18 @@
     var html = '';
     html += '<div class="month-nav"><button id="prevM">‹</button><span class="month-label">'+MONTH_NAMES[viewMonth.m]+' '+viewMonth.y+'</span><button id="nextM">›</button></div>';
 
-    html += '<div class="card card-centered">';
+    html += '<div class="card">';
     html += '<div class="muted">Balance through end of '+MONTH_NAMES[viewMonth.m]+'</div>';
     html += '<div class="balance-figure num" style="color:'+(balance<0?"var(--danger)":"var(--fg)")+'">'+fmt(balance)+'</div>';
     html += '<div class="balance-grid">' +
-      '<div class="balance-mini"><div class="label">In this month</div><div class="value num">'+fmt(totals.income)+'</div></div>' +
-      '<div class="balance-mini"><div class="label">Out this month</div><div class="value num">'+fmt(totals.expense)+'</div></div>' +
+      '<div class="balance-mini"><div class="label">Money in</div><div class="value num">'+fmt(totals.income)+'</div></div>' +
+      '<div class="balance-mini"><div class="label">Money out</div><div class="value num">'+fmt(totals.expense)+'</div></div>' +
       '</div>';
     html += '</div>';
 
     var alertLevel = state.settings.lowBalanceAlert || 0;
     if(alertLevel > 0 && balance <= alertLevel){
-      html += '<div class="callout card-centered" style="margin-top:14px; border-color:var(--danger);"><span class="status-danger" style="font-weight:700;">Balance is at or below '+fmt(alertLevel)+'</span></div>';
+      html += '<div class="callout" style="margin-top:14px; border-color:var(--danger);"><span class="status-danger" style="font-weight:700;">Balance is at or below '+fmt(alertLevel)+'</span></div>';
     }
 
     if(monthEntryCount === 0){
@@ -671,7 +667,7 @@
     if(totals.expense > 0 || deliveryTotal > 0){
       var pct = totals.expense > 0 ? Math.round((deliveryTotal/totals.expense)*100) : 0;
       html += '<div class="section-title">Delivery fees</div>';
-      html += '<div class="callout card-centered"><div class="muted">This month</div><div class="big num">'+fmt(deliveryTotal)+'</div><div class="muted">'+pct+'% of spending</div></div>';
+      html += '<div class="callout"><div class="muted">This month</div><div class="big num">'+fmt(deliveryTotal)+'</div><div class="muted">'+pct+'% of spending</div></div>';
     }
 
     var budgeted = state.categories.filter(function(c){ return c.budget > 0; });
@@ -718,12 +714,99 @@
     var m = viewMonth.m + delta, y = viewMonth.y;
     if(m < 0){ m = 11; y -= 1; } else if(m > 11){ m = 0; y += 1; }
     viewMonth = { y:y, m:m };
+    editId = null; editDraft = null; confirmDeleteId = null;
     render();
   }
 
   // ================= HISTORY TAB =================
   var historyFilter = "all";
   var confirmDeleteId = null;
+  var editId = null;      // id of the entry currently open for editing
+  var editDraft = null;   // working copy of that entry; only written back on Save
+
+  function startEdit(id){
+    var e = state.entries.find(function(x){ return x.id === id; });
+    if(!e) return;
+    editId = id;
+    editDraft = JSON.parse(JSON.stringify(e));
+    editDraft.amountText = String(e.amount);
+    confirmDeleteId = null;
+  }
+
+  function editFormHtml(){
+    var d = editDraft, h = '<div class="edit-panel stack">';
+    if(d.type === "expense"){
+      h += '<label class="field">What did you spend on?<textarea id="editNote">'+escapeHtml(d.note||"")+'</textarea></label>';
+      h += '<label class="field">Amount<input id="editAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+escapeAttr(d.amountText)+'"></label>';
+      h += '<div><div class="muted" style="margin-bottom:9px;">Category</div><div class="chip-scroll">';
+      state.categories.forEach(function(c){
+        h += '<button class="chip'+(d.categoryId===c.id?" selected":"")+'" data-ecat="'+c.id+'"><span class="swatch" style="background:'+c.color+'"></span>'+escapeHtml(c.name)+'</button>';
+      });
+      h += '</div></div>';
+      var kc = KEYWORD_CATEGORIES.find(function(k){ return k.id===d.categoryId && k.subcats; });
+      if(kc){
+        h += '<div><div class="muted" style="margin-bottom:9px;">Which kind?</div><div class="chip-scroll">';
+        kc.subcats.forEach(function(sc){
+          h += '<button class="chip'+(d.subcatId===sc.id?" selected":"")+'" data-esub="'+sc.id+'">'+escapeHtml(sc.name)+'</button>';
+        });
+        h += '</div></div>';
+      }
+    } else {
+      h += '<div><div class="muted" style="margin-bottom:9px;">Source</div><div class="chip-scroll">';
+      INCOME_SOURCES.forEach(function(src){
+        h += '<button class="chip'+(d.source===src.id?" selected":"")+'" data-esrc="'+src.id+'">'+src.name+'</button>';
+      });
+      h += '</div></div>';
+      h += '<label class="field">Amount<input id="editAmount" type="number" inputmode="decimal" min="0" step="0.01" value="'+escapeAttr(d.amountText)+'"></label>';
+      h += '<label class="field">Note<input id="editNote" type="text" value="'+escapeAttr(d.note||"")+'"></label>';
+    }
+    h += '<label class="field">Date<input id="editDate" type="date" value="'+d.date+'"></label>';
+    h += '<div class="btn-pair"><button class="btn btn-ghost" id="editCancel">Cancel</button><button class="btn btn-primary" id="editSave">Save changes</button></div>';
+    if(confirmDeleteId === d.id){
+      h += '<div class="btn-pair"><button class="btn btn-ghost" data-cancel-del="'+d.id+'">Keep it</button><button class="btn btn-danger" data-confirm-del="'+d.id+'">Yes, delete</button></div>';
+    } else {
+      h += '<button class="btn btn-link-danger" data-del="'+d.id+'">Delete this entry</button>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  function bindEditForm(){
+    if(!editId) return;
+    var note = document.getElementById("editNote");
+    var amt = document.getElementById("editAmount");
+    var date = document.getElementById("editDate");
+    note.addEventListener("input", function(){ editDraft.note = note.value; });
+    amt.addEventListener("input", function(){ editDraft.amountText = amt.value; });
+    date.addEventListener("change", function(){ editDraft.date = date.value; });
+    main.querySelectorAll("[data-ecat]").forEach(function(b){
+      b.addEventListener("click", function(){ editDraft.categoryId = b.getAttribute("data-ecat"); editDraft.subcatId = null; render(); });
+    });
+    main.querySelectorAll("[data-esub]").forEach(function(b){
+      b.addEventListener("click", function(){ editDraft.subcatId = b.getAttribute("data-esub"); render(); });
+    });
+    main.querySelectorAll("[data-esrc]").forEach(function(b){
+      b.addEventListener("click", function(){ editDraft.source = b.getAttribute("data-esrc"); render(); });
+    });
+    document.getElementById("editCancel").addEventListener("click", function(){ editId = null; editDraft = null; confirmDeleteId = null; render(); });
+    document.getElementById("editSave").addEventListener("click", function(){
+      var v = parseFloat(editDraft.amountText);
+      if(!v || v <= 0){ toast("Enter an amount first"); return; }
+      if(!editDraft.date){ toast("Pick a date first"); return; }
+      var e = state.entries.find(function(x){ return x.id === editId; });
+      if(!e){ editId = null; render(); return; }
+      e.amount = v;
+      e.note = (editDraft.note || "").trim();
+      e.date = editDraft.date;
+      if(e.type === "expense"){ e.categoryId = editDraft.categoryId; e.subcatId = editDraft.subcatId || null; }
+      else { e.source = editDraft.source; }
+      e.updatedAt = Date.now();
+      saveState();
+      editId = null; editDraft = null;
+      toast("Changes saved");
+      render();
+    });
+  }
 
   function renderHistory(){
     setHeaderSub("All logged entries");
@@ -742,6 +825,7 @@
     });
     html += '</div>';
 
+    if(es.length){ html += '<div class="muted" style="margin-bottom:10px;">Tap an entry to edit or delete it.</div>'; }
     if(!es.length){
       html += '<div class="empty card"><h3>No entries here</h3><p class="muted">Nothing matches this filter for '+MONTH_NAMES[viewMonth.m]+'.</p></div>';
     } else {
@@ -751,14 +835,11 @@
         var cat = isIncome ? null : catById(e.categoryId);
         var label = isIncome ? (INCOME_SOURCES.find(function(s){return s.id===e.source;})||{name:"Income"}).name : cat.name;
         var color = isIncome ? "var(--good)" : cat.color;
-        html += '<div class="entry-row" data-id="'+e.id+'">';
-        html += '<div class="entry-head"><span class="swatch" style="background:'+color+'"></span><div class="entry-note"><div class="n">'+escapeHtml(e.note || label)+'</div><div class="entry-meta">'+label+' · '+e.date+'</div></div>' +
+        var editing = editId === e.id;
+        html += '<div class="entry-row'+(editing?" editing":"")+'" data-id="'+e.id+'">';
+        html += '<div class="entry-head" data-edit="'+e.id+'" role="button" tabindex="0" aria-label="Edit entry"><span class="swatch" style="background:'+color+'"></span><div class="entry-note"><div class="n">'+escapeHtml(e.note || label)+'</div><div class="entry-meta">'+label+' · '+e.date+'</div></div>' +
           '<div class="entry-amount num '+(isIncome?"amount-income":"amount-expense")+'">'+(isIncome?"+":"−")+fmt(e.amount)+'</div></div>';
-        if(confirmDeleteId === e.id){
-          html += '<div class="entry-actions"><button class="btn btn-danger btn-sm" data-confirm-del="'+e.id+'">Confirm delete</button><button class="btn btn-ghost btn-sm" data-cancel-del="'+e.id+'">Cancel</button></div>';
-        } else {
-          html += '<div class="entry-actions"><button class="btn btn-ghost btn-sm" data-del="'+e.id+'">Delete</button></div>';
-        }
+        if(editing){ html += editFormHtml(); }
         html += '</div>';
       });
       html += '</div>';
@@ -772,6 +853,17 @@
       historyFilter = b.getAttribute("data-f");
       render();
     });
+    main.querySelectorAll("[data-edit]").forEach(function(row){
+      function open(){
+        var id = row.getAttribute("data-edit");
+        if(editId === id){ editId = null; editDraft = null; confirmDeleteId = null; }
+        else { startEdit(id); }
+        render();
+      }
+      row.addEventListener("click", open);
+      row.addEventListener("keydown", function(ev){ if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); open(); } });
+    });
+    bindEditForm();
     main.querySelectorAll("[data-del]").forEach(function(b){
       b.addEventListener("click", function(){ confirmDeleteId = b.getAttribute("data-del"); render(); });
     });
@@ -782,7 +874,7 @@
       b.addEventListener("click", function(){
         var id = b.getAttribute("data-confirm-del");
         state.entries = state.entries.filter(function(e){ return e.id !== id; });
-        confirmDeleteId = null;
+        confirmDeleteId = null; editId = null; editDraft = null;
         saveState();
         toast("Entry deleted");
         render();
@@ -810,7 +902,7 @@
     html += '<label class="field">Usual fixed salary (fills the amount in automatically when you log it as income)<input id="salaryInput" type="number" inputmode="decimal" min="0" step="0.01" value="'+(state.settings.salary||"")+'"></label>';
     html += '<label class="field">Alert when balance drops to or below<input id="lowBalanceInput" type="number" inputmode="decimal" min="0" step="0.01" value="'+(state.settings.lowBalanceAlert||"")+'" placeholder="e.g. 1500"></label>';
     html += '<div class="row-between"><span>Speak confirmations aloud</span><label class="switch"><input type="checkbox" id="ttsToggle" '+(state.settings.ttsEnabled?"checked":"")+'><span class="track"></span><span class="knob"></span></label></div>';
-    html += '<div class="muted">Speaking a confirmation can briefly interrupt music playing from another app — iPhone web pages cannot prevent this, only native apps can. Turn it off above if that is more annoying than helpful.</div>';
+    html += '<div class="muted">Speaking a confirmation can briefly interrupt music playing from another app. iPhone web pages cannot prevent this; only native apps can. Turn it off above if that is more annoying than helpful.</div>';
     html += '</div>';
 
     html += '<div class="section-title">Monthly budgets</div>';

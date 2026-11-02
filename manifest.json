@@ -1,5 +1,5 @@
 {
-  "name": "EDNA — Enhanced Dynamic Needs Allocator",
+  "name": "EDNA - Enhanced Dynamic Needs Allocator",
   "short_name": "EDNA",
   "description": "Voice-friendly expense and income tracker.",
   "start_url": "./index.html",

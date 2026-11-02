@@ -1,7 +1,7 @@
 // Bump this string any time index.html (or any cached file) changes and gets
-// redeployed — it's the only thing that makes the service worker fetch the
+// redeployed, it's the only thing that makes the service worker fetch the
 // new version instead of serving the old one forever from cache.
-var CACHE_VERSION = "v2";
+var CACHE_VERSION = "v3";
 var CACHE_NAME = "edna-tracker-" + CACHE_VERSION;
 
 var PRECACHE_URLS = [
@@ -62,7 +62,7 @@ self.addEventListener("fetch", function (event) {
         return response;
       }).catch(function () {
         // Offline and not cached (e.g. first-ever load of a page we don't
-        // precache) — nothing sensible to return, let the fetch fail.
+        // precache), nothing sensible to return, let the fetch fail.
         return new Response("Offline and not cached yet.", {
           status: 503,
           statusText: "Offline"

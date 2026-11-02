@@ -1,7 +1,7 @@
 [[headers]]
   for = "/sw.js"
   [headers.values]
-    # Never let a CDN/browser cache the service worker file itself — if it
+    # Never let a CDN/browser cache the service worker file itself, if it
     # did, a redeploy could sit invisible for ages before devices pick it up.
     Cache-Control = "no-cache"
 
